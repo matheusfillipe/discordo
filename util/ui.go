@@ -26,18 +26,23 @@ func ParseMarkdown(md string) string {
 
 func ChannelToString(c *discordgo.Channel) string {
 	var repr string
-	if c.Name != "" {
+	switch c.Type {
+	case discordgo.ChannelTypeGuildText, discordgo.ChannelTypeGuildNews:
 		repr = "#" + c.Name
-	} else if len(c.Recipients) == 1 {
-		rp := c.Recipients[0]
-		repr = rp.Username + "#" + rp.Discriminator
-	} else {
-		rps := make([]string, len(c.Recipients))
-		for i, r := range c.Recipients {
-			rps[i] = r.Username + "#" + r.Discriminator
-		}
+	case discordgo.ChannelTypeGuildVoice:
+		repr = "🔊" + c.Name
+	case discordgo.ChannelTypeDM, discordgo.ChannelTypeGroupDM:
+		if len(c.Recipients) == 1 {
+			rp := c.Recipients[0]
+			repr = rp.Username + "#" + rp.Discriminator
+		} else {
+			rps := make([]string, len(c.Recipients))
+			for i, r := range c.Recipients {
+				rps[i] = r.Username + "#" + r.Discriminator
+			}
 
-		repr = strings.Join(rps, ", ")
+			repr = strings.Join(rps, ", ")
+		}
 	}
 
 	return repr

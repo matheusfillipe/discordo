@@ -132,32 +132,37 @@ func onChannelsTreeViewSelected(app *App, n *tview.TreeNode) {
 		return
 	}
 
-	if c.Type == discordgo.ChannelTypeGuildCategory {
+	switch c.Type {
+	case discordgo.ChannelTypeGuildCategory:
 		n.SetExpanded(!n.IsExpanded())
 		return
-	}
-
-	app.SelectedChannel = c
-
-	app.MessagesTextView.SetTitle(util.ChannelToString(c))
-	app.SetFocus(app.MessageInputField)
-
-	go func() {
-		ms, err := app.Session.ChannelMessages(c.ID, app.Config.General.FetchMessagesLimit, "", "", "")
-		if err != nil {
-			return
-		}
-
-		for i := len(ms) - 1; i >= 0; i-- {
-			app.SelectedChannel.Messages = append(app.SelectedChannel.Messages, ms[i])
-			_, err = app.MessagesTextView.Write(buildMessage(app, ms[i]))
+	case discordgo.ChannelTypeGuildText, discordgo.ChannelTypeGuildNews:
+		go func() {
+			ms, err := app.Session.ChannelMessages(c.ID, app.Config.General.FetchMessagesLimit, "", "", "")
 			if err != nil {
 				return
 			}
-		}
 
-		app.MessagesTextView.ScrollToEnd()
-	}()
+			for i := len(ms) - 1; i >= 0; i-- {
+				app.SelectedChannel.Messages = append(app.SelectedChannel.Messages, ms[i])
+				_, err = app.MessagesTextView.Write(buildMessage(app, ms[i]))
+				if err != nil {
+					return
+				}
+			}
+
+			app.MessagesTextView.ScrollToEnd()
+		}()
+	case discordgo.ChannelTypeGuildVoice:
+		_, err = app.Session.ChannelVoiceJoin(c.GuildID, c.ID, false, false)
+		if err != nil {
+			return
+		}
+	}
+
+	app.SelectedChannel = c
+	app.MessagesTextView.SetTitle(util.ChannelToString(c))
+	app.SetFocus(app.MessageInputField)
 }
 
 func onMessagesTextViewInputCapture(app *App, e *tcell.EventKey) *tcell.EventKey {
